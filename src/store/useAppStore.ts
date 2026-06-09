@@ -105,6 +105,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     bgColor: 'transparent',
     classPrefix: 'sprite',
     retina: false,
+    outputFormat: 'png',
   },
 
   setToastHandlers: (handlers) => {

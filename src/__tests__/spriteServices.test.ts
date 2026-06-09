@@ -37,6 +37,7 @@ describe('Sprite Generator (services/spriteGenerator.ts)', () => {
     bgColor: 'transparent',
     classPrefix: 'sprite',
     retina: false,
+    outputFormat: 'png',
   };
 
   it('returns empty result for empty icons list', async () => {
@@ -132,6 +133,72 @@ describe('Sprite Generator (services/spriteGenerator.ts)', () => {
     expect(res.cssCode).toContain('.ui {');
     expect(res.cssCode).toContain('.ui-home {');
   });
+
+  it('SVG mode generates svgSpriteContent with symbol elements', async () => {
+    const icons = [
+      makeIcon('a', 'icon-home', 255, 0, 0),
+      makeIcon('b', 'icon-user', 0, 255, 0),
+    ];
+    const res = await generateSprite(icons, { ...baseConfig, outputFormat: 'svg' });
+    expect(res.svgSpriteContent).not.toBe('');
+    expect(res.svgSpriteContent).toContain('<svg');
+    expect(res.svgSpriteContent).toContain('<symbol');
+    expect(res.svgSpriteContent).toContain('id="icon-icon-home"');
+    expect(res.svgSpriteContent).toContain('id="icon-icon-user"');
+    expect(res.svgSpriteContent).toContain('viewBox=');
+    expect(res.imageDataUrl).toBe('');
+  });
+
+  it('SVG mode CSS uses mask-image and same class names as PNG mode', async () => {
+    const icons = [makeIcon('a', 'logo', 255, 0, 0)];
+    const resSvg = await generateSprite(icons, { ...baseConfig, outputFormat: 'svg' });
+    const resPng = await generateSprite(icons, { ...baseConfig, outputFormat: 'png' });
+    expect(resSvg.cssCode).toContain('.sprite {');
+    expect(resSvg.cssCode).toContain('.sprite-logo {');
+    expect(resPng.cssCode).toContain('.sprite {');
+    expect(resPng.cssCode).toContain('.sprite-logo {');
+    expect(resSvg.cssCode).toContain('mask-image');
+    expect(resSvg.cssCode).toContain('sprite.svg#icon-logo');
+  });
+
+  it('SVG mode SCSS uses mixins and variables', async () => {
+    const icons = [makeIcon('a', 'logo', 255, 0, 0)];
+    const res = await generateSprite(icons, { ...baseConfig, outputFormat: 'svg' });
+    expect(res.scssCode).toContain('$sprite-svg-url');
+    expect(res.scssCode).toContain('@mixin svg-sprite');
+    expect(res.scssCode).toContain('@mixin sprite-logo');
+    expect(res.scssCode).toContain('@include svg-sprite');
+  });
+
+  it('BOTH mode generates both PNG and SVG outputs', async () => {
+    const icons = [makeIcon('a', 'home', 255, 0, 0)];
+    const res = await generateSprite(icons, { ...baseConfig, outputFormat: 'both' });
+    expect(res.imageDataUrl).not.toBe('');
+    expect(res.imageDataUrl.startsWith('data:image/png')).toBe(true);
+    expect(res.svgSpriteContent).not.toBe('');
+    expect(res.svgSpriteContent).toContain('<symbol');
+    expect(res.cssCode).toContain('PNG Sprite Mode');
+    expect(res.cssCode).toContain('SVG Sprite Mode');
+    expect(res.cssCode).toContain('.svg .sprite');
+  });
+
+  it('SVG mode handles native SVG dataUrl input', async () => {
+    const svgIcon: IconItem = {
+      id: 'svg-1',
+      name: 'native-svg-icon',
+      originalName: 'native-svg-icon.svg',
+      width: 24,
+      height: 24,
+      addedAt: 0,
+      dataUrl: 'data:image/svg+xml;utf8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>'
+      ),
+    };
+    const res = await generateSprite([svgIcon], { ...baseConfig, outputFormat: 'svg' });
+    expect(res.svgSpriteContent).toContain('<circle');
+    expect(res.svgSpriteContent).toContain('id="icon-native-svg-icon"');
+    expect(res.svgSpriteContent).toContain('viewBox="0 0 24 24"');
+  });
 });
 
 describe('Sprite Splitter (services/spriteSplitter.ts)', () => {
@@ -146,6 +213,7 @@ describe('Sprite Splitter (services/spriteSplitter.ts)', () => {
       bgColor: 'transparent',
       classPrefix: 'sp',
       retina: false,
+      outputFormat: 'png',
     });
     const cellSize = 1;
     const cfg: SplitConfig = {

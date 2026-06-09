@@ -20,12 +20,15 @@ export interface Project {
   updatedAt: number;
 }
 
+export type SpriteOutputFormat = 'png' | 'svg' | 'both';
+
 export interface SpriteConfig {
   columns: number;
   spacing: number;
   bgColor: string;
   classPrefix: string;
   retina: boolean;
+  outputFormat: SpriteOutputFormat;
 }
 
 export interface IconPosition {
@@ -39,6 +42,7 @@ export interface IconPosition {
 
 export interface SpriteResult {
   imageDataUrl: string;
+  svgSpriteContent: string;
   cssCode: string;
   scssCode: string;
   iconPositions: IconPosition[];

@@ -19,7 +19,7 @@ import {
 import { useAppStore } from '@/store/useAppStore';
 import { createIconItemsFromFiles, downloadDataUrl, downloadText, cn } from '@/utils';
 import { generateSprite } from '@/services/spriteGenerator';
-import type { SpriteResult, IconItem } from '@/types';
+import type { SpriteResult, SpriteOutputFormat } from '@/types';
 
 export default function Generator() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,6 +31,7 @@ export default function Generator() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [previewTab, setPreviewTab] = useState<'png' | 'svg'>('png');
 
   const {
     generatorIcons,
@@ -99,7 +100,17 @@ export default function Generator() {
 
   const downloadAll = () => {
     if (!spriteResult) return;
-    downloadDataUrl(spriteResult.imageDataUrl, 'sprite.png');
+    const { outputFormat } = spriteConfig;
+    if (outputFormat === 'png' || outputFormat === 'both') {
+      if (spriteResult.imageDataUrl) {
+        downloadDataUrl(spriteResult.imageDataUrl, 'sprite.png');
+      }
+    }
+    if (outputFormat === 'svg' || outputFormat === 'both') {
+      if (spriteResult.svgSpriteContent) {
+        downloadText(spriteResult.svgSpriteContent, 'sprite.svg', 'image/svg+xml');
+      }
+    }
     downloadText(spriteResult.cssCode, 'sprite.css', 'text/css');
   };
 
@@ -304,6 +315,26 @@ export default function Generator() {
                 />
                 <span className="text-xs text-slate-300">启用 Retina 2x 模式</span>
               </label>
+
+              <div>
+                <label className="text-xs text-slate-400 block mb-1.5">输出格式</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {(['png', 'svg', 'both'] as SpriteOutputFormat[]).map((fmt) => (
+                    <button
+                      key={fmt}
+                      onClick={() => updateSpriteConfig({ outputFormat: fmt })}
+                      className={cn(
+                        'h-8 rounded border text-xs font-medium transition-colors uppercase',
+                        spriteConfig.outputFormat === fmt
+                          ? 'border-neon-cyan/60 bg-neon-cyan/10 text-neon-cyan'
+                          : 'border-ink-600 bg-ink-800 text-slate-400 hover:text-slate-200'
+                      )}
+                    >
+                      {fmt === 'both' ? 'PNG+SVG' : fmt}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -372,6 +403,29 @@ export default function Generator() {
               )}
             </div>
             <div className="flex items-center gap-1">
+              {spriteResult && (spriteConfig.outputFormat === 'both' || spriteConfig.outputFormat === 'png') && spriteResult.imageDataUrl && (
+                <button
+                  onClick={() => setPreviewTab('png')}
+                  className={cn(
+                    'px-2 py-1 text-xs font-mono rounded transition-colors',
+                    previewTab === 'png' ? 'bg-ink-700 text-white' : 'text-slate-400 hover:text-slate-200'
+                  )}
+                >
+                  PNG
+                </button>
+              )}
+              {spriteResult && (spriteConfig.outputFormat === 'both' || spriteConfig.outputFormat === 'svg') && spriteResult.svgSpriteContent && (
+                <button
+                  onClick={() => setPreviewTab('svg')}
+                  className={cn(
+                    'px-2 py-1 text-xs font-mono rounded transition-colors',
+                    previewTab === 'svg' ? 'bg-ink-700 text-white' : 'text-slate-400 hover:text-slate-200'
+                  )}
+                >
+                  SVG
+                </button>
+              )}
+              <div className="w-px h-5 bg-ink-600 mx-1" />
               <button onClick={() => setZoom((z) => Math.max(0.1, z - 0.1))} className="btn-ghost btn !px-2 !py-1">
                 <ZoomOut className="w-4 h-4" />
               </button>
@@ -398,7 +452,7 @@ export default function Generator() {
                 <div className="text-sm">上传图标开始生成精灵图</div>
               </div>
             )}
-            {spriteResult && (
+            {spriteResult && previewTab === 'png' && spriteResult.imageDataUrl && (
               <div className="flex items-start justify-center checkerboard rounded-lg p-4 inline-block min-w-full">
                 <img
                   src={spriteResult.imageDataUrl}
@@ -411,6 +465,25 @@ export default function Generator() {
                   className="max-w-none shadow-2xl"
                   draggable={false}
                 />
+              </div>
+            )}
+            {spriteResult && previewTab === 'svg' && spriteResult.svgSpriteContent && (
+              <div className="flex items-start justify-center checkerboard rounded-lg p-4 inline-block min-w-full">
+                <div
+                  style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}
+                  className="max-w-none shadow-2xl bg-white"
+                  dangerouslySetInnerHTML={{ __html: spriteResult.svgSpriteContent }}
+                />
+              </div>
+            )}
+            {spriteResult && previewTab === 'png' && !spriteResult.imageDataUrl && (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                当前输出格式不包含 PNG
+              </div>
+            )}
+            {spriteResult && previewTab === 'svg' && !spriteResult.svgSpriteContent && (
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">
+                当前输出格式不包含 SVG
               </div>
             )}
           </div>
